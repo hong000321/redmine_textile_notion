@@ -36,12 +36,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .editor-pane tr:hover td{background:#EEEDFE66}
 .editor-pane td:focus,.editor-pane th:focus{outline:2px solid var(--pu);outline-offset:-2px}
 .editor-pane hr{border:none;border-top:2px solid var(--bd);margin:1.4em 0}
-.editor-pane details{border:1px solid var(--bd);border-radius:var(--r);margin:.5em 0;overflow:hidden}
-.editor-pane summary{padding:8px 14px;cursor:text;font-weight:500;list-style:none;background:var(--bg2);display:flex;align-items:center;gap:8px;min-height:1.75em}
-.editor-pane summary::-webkit-details-marker{display:none}
-.editor-pane summary::before{content:'▶';font-size:9px;color:var(--tx3);transition:transform .2s;flex-shrink:0;cursor:pointer}
-.editor-pane details[open]>summary::before{transform:rotate(90deg)}
-.editor-pane details>p,.editor-pane details>ul,.editor-pane details>ol{padding:2px 16px}
 .editor-pane a{color:var(--pu);text-decoration:underline;text-underline-offset:2px}
 .editor-pane img.inline-img{max-width:100%;border-radius:var(--r);border:1px solid var(--bd);display:block;margin:6px 0}
 .check-ok{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#22c55e;color:#fff;font-size:11px;font-weight:700;margin-right:4px;flex-shrink:0;vertical-align:middle}
@@ -79,6 +73,27 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .import-preview{margin-top:12px;padding:12px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);font-size:13px;max-height:160px;overflow-y:auto;color:var(--tx3)}
 .import-preview.has{color:var(--tx)}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
+.toggle-block{margin:.4em 0;border-radius:var(--r)}
+.toggle-header{display:flex;align-items:flex-start;gap:6px;cursor:pointer;padding:2px 4px;border-radius:var(--r);user-select:none}
+.toggle-header:hover{background:var(--bg2)}
+.toggle-arrow{flex-shrink:0;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx3);transition:transform .15s;margin-top:2px}
+.toggle-block.open>.toggle-header>.toggle-arrow{transform:rotate(90deg)}
+.toggle-title{flex:1;outline:none;min-height:1.6em;line-height:1.75;font-weight:500}
+.toggle-body{display:none;padding-left:24px;border-left:2px solid var(--pum);margin-left:8px;margin-top:2px}
+.toggle-block.open>.toggle-body{display:block}
+
+/* ── Shift+Enter 탈출 힌트 ── */
+.escape-hint-wrapper{position:relative;display:block}
+.escape-hint-wrapper::after{
+  content:'Shift + Enter로 탈출';
+  position:absolute;bottom:6px;right:10px;
+  font-size:10px;color:var(--tx3);opacity:0;
+  pointer-events:none;
+  transition:opacity .15s;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  letter-spacing:.02em;
+}
+.escape-hint-wrapper:focus-within::after{opacity:1;}
 </style>
 </head>
 <body>
@@ -116,7 +131,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <span><kbd>#</kbd> 헤딩</span>
     <span><kbd>Ctrl+Z</kbd> 취소 <kbd>Ctrl+Y</kbd> 재실행</span>
     <span><kbd>Ctrl+B</kbd> 볼드 <kbd>Ctrl+K</kbd> 링크</span>
-    <span><kbd>**text**</kbd> 볼드 <kbd>*text*</kbd> 이탤릭 <kbd>&gt;</kbd> 토글 <kbd>```</kbd> 코드 <kbd>- </kbd> 불릿 <kbd>1. </kbd> 번호목록</span>
+    <span><kbd>**text**</kbd> 볼드 <kbd>*text*</kbd> 이탤릭 <kbd>&gt;</kbd> 토글 <kbd>```</kbd> 코드</span>
   </div>
   <div class="slash-menu" id="slashMenu">
     <div class="slash-search"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M9.5 9.5l3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span class="slash-query" id="slashQuery">/</span></div>
@@ -148,8 +163,8 @@ const COMMANDS=[
   {group:'기본 블록',cmd:'h3',label:'Heading 3',desc:'### 로도 입력 가능',icon:'<b style="font-size:10px">H3</b>',kw:['heading','헤딩','소제목','h3']},
   {group:'기본 블록',cmd:'ul',label:'Bullet list',desc:'- 로도 입력 가능',icon:'•',kw:['bullet','list','목록','리스트','불릿']},
   {group:'기본 블록',cmd:'ol',label:'Numbered list',desc:'1. 로도 입력 가능',icon:'1.',kw:['number','ordered','번호','순서','리스트']},
-  {group:'기본 블록',cmd:'blockquote',label:'Quote',desc:'슬래시 메뉴에서 삽입',icon:'"',kw:['quote','인용','blockquote']},
-  {group:'기본 블록',cmd:'toggle',label:'Toggle list',desc:'> 로도 입력 가능',icon:'▶',kw:['toggle','토글','접기','펼치기','collapse']},
+  {group:'기본 블록',cmd:'blockquote',label:'Quote',desc:'bq. 인용블록',icon:'"',kw:['quote','인용','blockquote']},
+  {group:'기본 블록',cmd:'toggle',label:'Toggle',desc:'▶ 접기/펼치기 블록 (> 로도 입력)',icon:'▶',kw:['toggle','토글','접기','펼치기','collapse']},
   {group:'기본 블록',cmd:'pre',label:'Code block',desc:'``` 로도 입력 가능',icon:'<span style="font-size:10px">&lt;/&gt;</span>',kw:['code','코드','블록','pre','코드블록']},
   {group:'삽입',cmd:'table',label:'Table',desc:'행·열 편집 지원',icon:'<svg viewBox="0 0 14 14" fill="none" width="13" height="13"><rect x="1" y="1" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1"/><path d="M1 5h12M1 9h12M5 1v12" stroke="currentColor" stroke-width="1"/></svg>',kw:['table','표','테이블','grid','그리드']},
   {group:'삽입',cmd:'divider',label:'Divider',desc:'수평선 삽입',icon:'—',kw:['divider','구분선','수평선','hr','선']},
@@ -157,10 +172,16 @@ const COMMANDS=[
   {group:'삽입',cmd:'image_modal',label:'Image',desc:'URL 또는 파일명',icon:'<svg viewBox="0 0 14 14" fill="none" width="13" height="13"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.1"/><circle cx="4.5" cy="5.5" r="1" fill="currentColor"/><path d="M1 9.5l3-3 2.5 2.5 2-2 3.5 3" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>',kw:['image','이미지','사진','그림','img']},
 ];
 
-let slashOpen=false,slashRange=null,slashSel=0,slashQuery='',savedRange=null,activeCell=null,isComposing=false;
+let slashOpen=false,slashRange=null,slashSel=0,slashQuery='',savedRange=null,activeCell=null,isComposing=false,justFinishedComposition=false;
 
 editor.addEventListener('compositionstart',()=>isComposing=true);
-editor.addEventListener('compositionend',e=>{isComposing=false;if(slashOpen){const d=e.data||'';if(d){slashQuery+=d;slashQueryEl.textContent='/'+slashQuery;slashSel=0;renderSlashList();}}});
+editor.addEventListener('compositionend',e=>{
+  isComposing=false;
+  justFinishedComposition=true;
+  /* 조합 완료 직후 짧은 시간 동안 Space 트리거 차단 */
+  setTimeout(()=>justFinishedComposition=false, 0);
+  if(slashOpen){const d=e.data||'';if(d){slashQuery+=d;slashQueryEl.textContent='/'+slashQuery;slashSel=0;renderSlashList();}}
+});
 
 function filteredCommands(){if(!slashQuery)return COMMANDS;const q=slashQuery.toLowerCase();return COMMANDS.filter(c=>c.label.toLowerCase().includes(q)||c.kw.some(k=>k.includes(q)));}
 function highlightMatch(text,q){if(!q)return text;const idx=text.toLowerCase().indexOf(q.toLowerCase());if(idx<0)return text;return text.slice(0,idx)+'<span class="slash-match">'+text.slice(idx,idx+q.length)+'</span>'+text.slice(idx+q.length);}
@@ -195,37 +216,296 @@ editor.addEventListener('keydown',e=>{
     if(e.key==='Backspace'){e.preventDefault();if(slashQuery.length===0){closeSlash();}else{slashQuery=slashQuery.slice(0,-1);const s=window.getSelection();if(s.rangeCount){const r2=s.getRangeAt(0);r2.setStart(r2.startContainer,Math.max(0,r2.startOffset-1));r2.deleteContents();}slashQueryEl.textContent='/'+slashQuery;slashSel=0;renderSlashList();}return;}
     if(!isComposing&&e.key.length===1&&!ctrl){slashQuery+=e.key;slashQueryEl.textContent='/'+slashQuery;slashSel=0;renderSlashList();}return;
   }
-  if(e.key==='Enter'&&e.shiftKey){
-    const sel2=window.getSelection();if(sel2&&sel2.rangeCount){let nn=sel2.getRangeAt(0).startContainer;while(nn&&nn!==editor){if(nn.tagName==='PRE'){e.preventDefault();exitCodeBlock(nn);return;}nn=nn.parentNode;}}
-  }
-  if(e.key==='ArrowDown'&&!slashOpen){
-    const sel2=window.getSelection();if(sel2&&sel2.rangeCount){const r2=sel2.getRangeAt(0);let nn=r2.startContainer;while(nn&&nn!==editor){if(nn.tagName==='PRE'){const ta=r2.startContainer.nodeType===3?r2.startContainer.textContent.slice(r2.startOffset):'';if(!ta.includes('\n')){e.preventDefault();exitCodeBlock(nn);return;}break;}nn=nn.parentNode;}}
-  }
   if(e.key==='Tab'&&activeCell){e.preventDefault();const cells=Array.from(activeCell.closest('table').querySelectorAll('td,th'));const next=cells[cells.indexOf(activeCell)+(e.shiftKey?-1:1)];if(next){next.focus();activeCell=next;}}
 });
-/* ── 블록 교체 헬퍼 ───────────────────────────────── */
-function getBlockParent(node){
-  let n=node.nodeType===3?node.parentNode:node;
-  while(n&&n.parentNode&&n.parentNode!==editor)n=n.parentNode;
-  if(!n||n===editor)return null;
-  return n;
+/* ── 토글 블록 생성 헬퍼 ── */
+function makeToggleBlock(titleText) {
+  const wrap  = document.createElement('div');  wrap.className  = 'toggle-block open';
+  const hdr   = document.createElement('div');  hdr.className   = 'toggle-header';
+  const arrow = document.createElement('span'); arrow.className = 'toggle-arrow'; arrow.textContent = '▶';
+  const title = document.createElement('div');  title.className = 'toggle-title'; title.contentEditable = 'true';
+  if(titleText) title.textContent = titleText; else title.innerHTML = '<br>';
+  const body  = document.createElement('div');  body.className  = 'toggle-body';
+  const bp    = document.createElement('p');    bp.innerHTML    = '<br>';
+  body.appendChild(bp);
+  hdr.appendChild(arrow); hdr.appendChild(title);
+  wrap.appendChild(hdr); wrap.appendChild(body);
+  applyEscapeHint(body);
+  /* 화살표 클릭 → 열기/닫기 */
+  hdr.addEventListener('mousedown', e => {
+    if(e.target === title || title.contains(e.target)) return;
+    e.preventDefault();
+    wrap.classList.toggle('open');
+  });
+  /* toggle-title에서 Enter → body로, Shift+Enter → 토글 블록 밖으로 */
+  title.addEventListener('keydown', ev => {
+    if(ev.key === 'Enter' && !ev.shiftKey) {
+      ev.preventDefault();
+      wrap.classList.add('open');
+      placeCursorAtEnd(body.querySelector('p') || body);
+    }
+    /* Shift+Enter는 글로벌 핸들러가 처리 (여기서는 막지 않음) */
+  });
+  return wrap;
 }
-function replaceBlock(oldBlock,newBlock){
-  if(!oldBlock){
-    const sel=window.getSelection();
-    if(sel&&sel.rangeCount){
-      const tn=sel.getRangeAt(0).startContainer;
-      if(tn.nodeType===3&&tn.parentNode===editor){editor.insertBefore(newBlock,tn);tn.remove();}
-      else editor.appendChild(newBlock);
-    }else editor.appendChild(newBlock);
-  }else oldBlock.replaceWith(newBlock);
+
+/* ── Backspace: 빈 블록 탈출 ── */
+editor.addEventListener('keydown', e => {
+  if(e.key !== 'Backspace') return;
+  if(slashOpen || isComposing) return;
+  const sel = window.getSelection(); if(!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  if(!range.collapsed) return; /* 선택 범위 있으면 기본 동작 */
+  if(range.startOffset !== 0) return; /* 커서가 맨 앞이 아니면 기본 동작 */
+
+  const node = range.startContainer;
+
+  /* ── li (bullet / numbered) ── */
+  const li = node.nodeType === 3 ? node.parentElement?.closest('li') : node.closest?.('li');
+  if(li && editor.contains(li)) {
+    const list = li.parentElement; /* ul or ol */
+    const isEmpty = li.textContent.trim() === '';
+    if(isEmpty) {
+      e.preventDefault();
+      const newP = document.createElement('p'); newP.innerHTML = '<br>';
+      if(list.children.length <= 1) {
+        /* 항목 하나뿐 → 리스트 전체를 p로 교체 */
+        list.replaceWith(newP);
+      } else {
+        /* 다중 항목 → 해당 li 제거, 리스트 뒤에 p 삽입 */
+        li.remove();
+        list.after(newP);
+      }
+      placeCursorAtEnd(newP);
+      return;
+    }
+  }
+
+  /* ── toggle-title 맨 앞 ── */
+  const toggleTitle = node.nodeType === 3 ? node.parentElement?.closest('.toggle-title') : node.closest?.('.toggle-title');
+  if(toggleTitle && editor.contains(toggleTitle)) {
+    const isEmpty = toggleTitle.textContent.trim() === '';
+    if(isEmpty) {
+      e.preventDefault();
+      const toggleWrap = toggleTitle.closest('.toggle-block');
+      const newP = document.createElement('p'); newP.innerHTML = '<br>';
+      toggleWrap.replaceWith(newP);
+      placeCursorAtEnd(newP);
+      return;
+    }
+  }
+
+  /* ── blockquote 맨 앞 ── */
+  const bq = node.nodeType === 3 ? node.parentElement?.closest('blockquote') : node.closest?.('blockquote');
+  if(bq && editor.contains(bq)) {
+    const inner = bq.textContent.trim();
+    if(inner === '') {
+      e.preventDefault();
+      const newP = document.createElement('p'); newP.innerHTML = '<br>';
+      bq.replaceWith(newP);
+      placeCursorAtEnd(newP);
+      return;
+    }
+  }
+});
+
+/* 텍스트 노드의 부모 요소로 closest 탐색 (전역) */
+function closestPre(n) {
+  let el = n.nodeType === 3 ? n.parentElement : n;
+  while(el && el !== editor) {
+    if(el.tagName === 'PRE') return el;
+    el = el.parentElement;
+  }
+  return null;
 }
-function exitCodeBlock(pre){
-  let next=pre.nextElementSibling;
-  if(!next||!editor.contains(next)){const p=document.createElement('p');p.innerHTML='<br>';pre.after(p);next=p;}
+
+/* 블록에서 탈출해 다음 p로 이동하는 공통 헬퍼 */
+function escapeBlockDown(block) {
+  let next = block.nextElementSibling;
+  if(!next || next.tagName === 'HR') {
+    next = document.createElement('p');
+    next.innerHTML = '<br>';
+    block.after(next);
+  }
   placeCursorAtEnd(next);
 }
 
+/* pre / toggle-body 에 escape-hint-wrapper 클래스 부여 */
+function applyEscapeHint(el) {
+  if(el) el.classList.add('escape-hint-wrapper');
+}
+
+/* ── 마크다운 단축 변환 + 탈출키 ── */
+editor.addEventListener('keydown', e => {
+  if(slashOpen) return;
+  if(isComposing) return;   /* ① 한글 조합 중에는 절대 변환 안 함 */
+  if(justFinishedComposition) return;  /* ② 조합 완료 직후 Space로 인한 오변환 차단 */
+
+  const sel = window.getSelection();
+  if(!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  const node  = range.startContainer;
+
+  /* ── Shift+Enter: 코드블록 / 토글바디 / 토글타이틀 탈출 ── */
+  if(e.key === 'Enter' && e.shiftKey) {
+    /* 코드블록 탈출 */
+    const pre = closestPre(node);
+    if(pre && editor.contains(pre)) {
+      e.preventDefault();
+      escapeBlockDown(pre);
+      return;
+    }
+    /* 토글 body 탈출 */
+    const toggleBody = (node.nodeType===3 ? node.parentElement : node)?.closest?.('.toggle-body');
+    if(toggleBody && editor.contains(toggleBody)) {
+      e.preventDefault();
+      const toggleWrap = toggleBody.closest('.toggle-block');
+      escapeBlockDown(toggleWrap);
+      return;
+    }
+    /* 토글 title에서 Shift+Enter → 토글 블록 전체 밖으로 */
+    const toggleTitle = (node.nodeType===3 ? node.parentElement : node)?.closest?.('.toggle-title');
+    if(toggleTitle && editor.contains(toggleTitle)) {
+      e.preventDefault();
+      const toggleWrap = toggleTitle.closest('.toggle-block');
+      escapeBlockDown(toggleWrap);
+      return;
+    }
+  }
+
+  /* ── 코드블록 탈출: ArrowDown (마지막 줄에서) ── */
+  if(e.key === 'ArrowDown') {
+    const pre = closestPre(node);
+    if(pre && editor.contains(pre)) {
+      const code = pre.querySelector('code') || pre;
+      const text = code.textContent;
+      const offset = range.startOffset;
+      const lastNL = text.lastIndexOf('\n');
+      if(offset > lastNL) {
+        e.preventDefault();
+        escapeBlockDown(pre);
+        return;
+      }
+    }
+  }
+
+  /* ── Backspace: code block 안에서 블록 전체 삭제 방지 ── */
+  if(e.key === 'Backspace') {
+    const pre = closestPre(node);
+    if(pre && editor.contains(pre)) {
+      const code = pre.querySelector('code') || pre;
+      /* 코드가 완전히 비어있을 때만 블록 제거 → p로 교체 */
+      if(code.textContent === '') {
+        e.preventDefault();
+        const newP = document.createElement('p'); newP.innerHTML = '<br>';
+        pre.replaceWith(newP);
+        placeCursorAtEnd(newP);
+        return;
+      }
+      /* 커서가 맨 앞(offset 0)이면 브라우저가 블록을 합치려 할 수 있음 → 막기 */
+      if(range.collapsed && range.startOffset === 0 &&
+         (node === code || node.parentNode === code)) {
+        e.preventDefault();
+        return;
+      }
+    }
+  }
+
+  /* Space / Enter만 마크다운 트리거 */
+  if(e.key !== ' ' && e.key !== 'Enter') return;
+  if(node.nodeType !== 3) return;
+
+  /* pre 안에서는 Enter/Space 기본 동작 유지 */
+  if(closestPre(node)) return;
+
+  /* 커서 앞 텍스트 — 조합 중인 문자는 이미 위에서 차단됨 */
+  const before = node.textContent.slice(0, range.startOffset);
+
+  /* ── Space 트리거 ── */
+  if(e.key === ' ') {
+    /* heading: # ## ### + space */
+    const hm = before.match(/^(#{1,3})$/);
+    if(hm) {
+      e.preventDefault();
+      const block = document.createElement('h'+hm[1].length);
+      block.innerHTML = '<br>';
+      getLineBlock(node).replaceWith(block);
+      placeCursorAtEnd(block);
+      return;
+    }
+    /* bullet list: - + space 또는 * + space */
+    if(before === '-' || before === '*') {
+      e.preventDefault();
+      const ul = document.createElement('ul');
+      const li = document.createElement('li'); li.innerHTML = '<br>';
+      ul.appendChild(li);
+      getLineBlock(node).replaceWith(ul);
+      placeCursorAtEnd(li);
+      return;
+    }
+    /* numbered list: 1. / 2. / ... + space */
+    if(/^\d+\.$/.test(before)) {
+      e.preventDefault();
+      const ol = document.createElement('ol');
+      const li = document.createElement('li'); li.innerHTML = '<br>';
+      ol.appendChild(li);
+      getLineBlock(node).replaceWith(ol);
+      placeCursorAtEnd(li);
+      return;
+    }
+    /* toggle block: > + space → 토글 블록 생성 */
+    if(before === '>' || before === '&gt;') {
+      e.preventDefault();
+      const toggle = makeToggleBlock('');
+      getLineBlock(node).replaceWith(toggle);
+      const title = toggle.querySelector('.toggle-title');
+      placeCursorAtEnd(title);
+      return;
+    }
+    /* code block: ``` + space */
+    if(before === '```' || before === '\`\`\`') {
+      e.preventDefault();
+      const pre  = document.createElement('pre');
+      const code = document.createElement('code'); code.textContent = '';
+      pre.appendChild(code);
+      const newP = document.createElement('p'); newP.innerHTML = '<br>';
+      getLineBlock(node).replaceWith(pre);
+      pre.after(newP);
+      applyEscapeHint(pre);
+      placeCursorAtEnd(code);
+      return;
+    }
+  }
+
+  /* ── Enter 트리거 ── */
+  if(e.key === 'Enter') {
+    /* 수평선: --- + Enter */
+    if(before === '---') {
+      e.preventDefault();
+      const hr = document.createElement('hr');
+      const p  = document.createElement('p'); p.innerHTML = '<br>';
+      getLineBlock(node).replaceWith(hr);
+      hr.after(p);
+      placeCursorAtEnd(p);
+      return;
+    }
+    /* code block: ``` + Enter (Space 없이 Enter로도 동작) */
+    if(before === '```' || before === '\`\`\`') {
+      e.preventDefault();
+      const pre  = document.createElement('pre');
+      const code = document.createElement('code'); code.textContent = '';
+      pre.appendChild(code);
+      const newP = document.createElement('p'); newP.innerHTML = '<br>';
+      getLineBlock(node).replaceWith(pre);
+      pre.after(newP);
+      applyEscapeHint(pre);
+      placeCursorAtEnd(code);
+      return;
+    }
+  }
+});
+
+/* ── input 이벤트: / 슬래시 감지 + 인라인 bold/italic (** *) ── */
 editor.addEventListener('input',()=>{
   if(isComposing)return;
   const sel=window.getSelection();if(!sel.rangeCount)return;
@@ -233,23 +513,24 @@ editor.addEventListener('input',()=>{
   const lineText=node.textContent.substring(0,range.startOffset);
   if(!slashOpen&&lineText.endsWith('/')){openSlash(range);return;}
   if(slashOpen)return;
+  /* 인라인 bold/italic — input 이벤트에서 유지 */
   const full=node.textContent;
-  const bp=getBlockParent(node);
-  if(/^#{1,3} /.test(full)){const m=full.match(/^(#{1,3}) (.*)/);if(!m)return;const b=document.createElement('h'+m[1].length);if(m[2])b.textContent=m[2];else b.innerHTML='<br>';replaceBlock(bp,b);placeCursorAtEnd(b);return;}
   if(/^\*\*(.+)\*\*$/.test(full)){document.execCommand('bold');node.textContent=full.slice(2,-2);return;}
   if(/^\*([^*]+)\*$/.test(full)){document.execCommand('italic');node.textContent=full.slice(1,-1);return;}
-  if(full==='- '||full==='* '){const ul=document.createElement('ul'),li=document.createElement('li');ul.appendChild(li);replaceBlock(bp,ul);placeCursorAtEnd(li);return;}
-  if(/^\d+\. $/.test(full)){const ol=document.createElement('ol'),li=document.createElement('li');ol.appendChild(li);replaceBlock(bp,ol);placeCursorAtEnd(li);return;}
-  if(full==='> '){const det=document.createElement('details');det.open=true;const sum=document.createElement('summary');sum.innerHTML='<br>';det.appendChild(sum);const p=document.createElement('p');p.innerHTML='<br>';det.appendChild(p);replaceBlock(bp,det);placeCursorAtEnd(sum);return;}
-  if(full==='```'){const pre=document.createElement('pre'),code=document.createElement('code');pre.appendChild(code);replaceBlock(bp,pre);placeCursorAtEnd(code);return;}
-  if(full==='---'){const hr=document.createElement('hr'),p=document.createElement('p');p.innerHTML='<br>';replaceBlock(bp,hr);hr.after(p);placeCursorAtEnd(p);return;}
 });
+
+/* 현재 텍스트노드가 속한 블록 요소 반환 */
+function getLineBlock(textNode) {
+  let n = textNode.parentNode;
+  const blocks = new Set(['P','DIV','H1','H2','H3','H4','H5','H6','LI','BLOCKQUOTE','PRE']);
+  while(n && n !== editor) {
+    if(blocks.has(n.tagName)) return n;
+    n = n.parentNode;
+  }
+  return textNode.parentNode;
+}
 editor.addEventListener('keyup',updateToolbarState);
 editor.addEventListener('mouseup',e=>{updateToolbarState();handleCellClick(e);});
-editor.addEventListener('click',e=>{
-  const sum=e.target.closest('summary');
-  if(sum&&editor.contains(sum)){e.preventDefault();e.stopPropagation();}
-});
 document.addEventListener('mousedown',e=>{if(slashOpen&&!slashMenu.contains(e.target)&&e.target!==editor)closeSlash();if(!tableCtx.contains(e.target)&&!e.target.closest('td,th'))hideTableCtx();});
 
 function handleCellClick(e){const cell=e.target.closest('td,th');if(cell&&editor.contains(cell)){activeCell=cell;showTableCtx(cell);}else hideTableCtx();}
@@ -274,8 +555,36 @@ function makeCheck(){return '<span class="check-ok">✓</span>';}
 
 function insertBlock(type){
   editor.focus();
-  const map={h1:'<h1><br></h1>',h2:'<h2><br></h2>',h3:'<h3><br></h3>',ul:'<ul><li><br></li></ul>',ol:'<ol><li><br></li></ol>',blockquote:'<blockquote><p><br></p></blockquote>',toggle:'<details open><summary><br></summary><p><br></p></details><p><br></p>',pre:'<pre><code></code></pre>',divider:'<hr><p><br></p>',table:'<table><thead><tr><th>헤더 1</th><th>헤더 2</th><th>헤더 3</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr></tbody></table><p><br></p>',attachment:`<p>${makeAttachmentChip('파일명.pdf')}</p>`,image:`<p>${makeImageChip('이미지.png')}</p>`};
-  if(map[type])document.execCommand('insertHTML',false,map[type]);
+  const map={h1:'<h1><br></h1>',h2:'<h2><br></h2>',h3:'<h3><br></h3>',ul:'<ul><li><br></li></ul>',ol:'<ol><li><br></li></ol>',blockquote:'<blockquote><p><br></p></blockquote>',pre:'<pre><code></code></pre>',divider:'<hr><p><br></p>',table:'<table><thead><tr><th>헤더 1</th><th>헤더 2</th><th>헤더 3</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr></tbody></table><p><br></p>',attachment:`<p>${makeAttachmentChip('파일명.pdf')}</p>`,image:`<p>${makeImageChip('이미지.png')}</p>`};
+  if(type === 'toggle') {
+    editor.focus();
+    const sel = window.getSelection();
+    const toggle = makeToggleBlock('');
+    const newP = document.createElement('p'); newP.innerHTML = '<br>';
+    if(sel && sel.rangeCount) {
+      const range = sel.getRangeAt(0);
+      let block = range.startContainer;
+      while(block && block !== editor && block.parentNode !== editor) block = block.parentNode;
+      if(block && block !== editor) { block.after(newP); block.after(toggle); }
+      else { editor.appendChild(toggle); editor.appendChild(newP); }
+    } else { editor.appendChild(toggle); editor.appendChild(newP); }
+    placeCursorAtEnd(toggle.querySelector('.toggle-title'));
+    return;
+  }
+  if(map[type]) {
+    document.execCommand('insertHTML',false,map[type]);
+    /* 방금 삽입된 pre에 escape hint 적용 */
+    if(type === 'pre') {
+      setTimeout(()=>{
+        const sel2 = window.getSelection();
+        if(sel2 && sel2.rangeCount) {
+          let el = sel2.getRangeAt(0).startContainer;
+          if(el.nodeType===3) el=el.parentElement;
+          while(el && el !== editor) { if(el.tagName==='PRE'){applyEscapeHint(el);break;} el=el.parentElement; }
+        }
+      }, 0);
+    }
+  }
 }
 
 function openLinkModal(){saveSelection();const sel=window.getSelection(),selText=sel&&sel.rangeCount?sel.toString():'',anchor=findAnchor(sel);document.getElementById('linkText').value=anchor?anchor.textContent:selText;document.getElementById('linkUrl').value=anchor?anchor.href:'';openOverlay('overlayLink');setTimeout(()=>{const u=document.getElementById('linkUrl');(u.value?u:document.getElementById('linkText')).focus();},50);}
@@ -324,7 +633,7 @@ function textileToHtml(textile){
       // http image → <img>
       .replace(/!(https?:\/\/[^!\s]+)!/g,(_,url)=>`<img class="inline-img" src="${url}" alt=""/>`)
       // path image → decode filename → chip
-      .replace(/!([^!]+?)!/g,(_,path)=>{
+      .replace(/!([^!\s]+)!/g,(_,path)=>{
         let name=path;try{name=decodeURIComponent(path.split('/').pop());}catch(e){}
         if(path.startsWith('/'))return `${makeImageChip(name)}<span style="font-size:11px;color:#9ca3af;margin-left:4px">${name}</span>`;
         return makeImageChip(name);
@@ -445,8 +754,6 @@ function htmlToTextile(html){
     if(tag==='img')return `!${node.getAttribute('src')||''}!`;
     if(tag==='code')return node.parentNode&&node.parentNode.tagName==='PRE'?inner():'@'+inner()+'@';
     if(tag==='pre')return '<pre>\n<code>'+inner().trim()+'</code>\n</pre>\n\n';
-    if(tag==='details'){const sumEl=node.querySelector('summary');const sumTxt=sumEl?Array.from(sumEl.childNodes).map(n=>n2t(n,depth)).join('').replace(/\n+/g,' ').trim():'';const body=Array.from(node.childNodes).filter(n=>!n.tagName||n.tagName.toLowerCase()!=='summary').map(n=>n2t(n,depth)).join('').trim();return(sumTxt?'bq. '+sumTxt+'\n\n':'')+(body?body+'\n\n':'');}
-    if(tag==='summary')return inner();
     if(tag==='blockquote')return 'bq. '+inner().replace(/<\/?p>/g,'').trim()+'\n\n';
     if(tag==='p'){const t=inner().trim();return t?t+'\n\n':'';}
     if(tag==='ul'){
@@ -470,8 +777,19 @@ function htmlToTextile(html){
     if(tag==='br')return '\n';
     if(tag==='table'){let rows='';node.querySelectorAll('tr').forEach(tr=>{const cells=Array.from(tr.querySelectorAll('th,td'));const isH=tr.querySelectorAll('th').length>0;rows+='|'+cells.map(c=>(isH?'_.':'')+Array.from(c.childNodes).map(n=>n2t(n,depth)).join('').trim()).join('|')+'|\n';});return rows+'\n';}
     if(tag==='span'&&node.classList.contains('attachment-chip'))return `attachment:"${node.getAttribute('data-filename')||node.textContent.trim()}"`;
-    if(tag==='span'&&node.classList.contains('image-chip')){const fn2=node.getAttribute('data-filename')||node.textContent.trim();return `!${fn2}!`;}
+    if(tag==='span'&&node.classList.contains('image-chip'))return `!${node.getAttribute('data-filename')||node.textContent.trim()}!`;
     if(tag==='span'&&node.classList.contains('check-ok'))return '(/)';
+    /* toggle-block → > 제목\n내용 */
+    if(tag==='div'&&node.classList.contains('toggle-block')){
+      const titleEl=node.querySelector('.toggle-title');
+      const bodyEl=node.querySelector('.toggle-body');
+      const titleTxt=titleEl?titleEl.textContent.trim():'';
+      const bodyTxt=bodyEl?Array.from(bodyEl.childNodes).map(n=>n2t(n,depth)).join('').trim():'';
+      return '> '+titleTxt+(bodyTxt?'\n'+bodyTxt:'')+'\n\n';
+    }
+    if(tag==='div'&&node.classList.contains('toggle-title'))return node.textContent;
+    if(tag==='div'&&node.classList.contains('toggle-body'))return '';
+    if(tag==='div'&&node.classList.contains('toggle-header'))return '';
     return inner();
   }
   return Array.from(div.childNodes).map(n=>n2t(n,0)).join('').replace(/\n{3,}/g,'\n\n').trim();
